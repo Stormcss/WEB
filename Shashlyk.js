@@ -5,7 +5,8 @@ var players = {'Андрей':['andr_games','andr_wins','andr_persent'],
                 'Иван':['ivan_games','ivan_wins','ivan_persent'],
                 'Руслан':['rus_games','rus_wins','rus_persent']};
 
-var isDebug = false;
+var isDebug = true;
+var isInfo = true;
 
 var andr_wins = 0;
 var alin_wins = 0;
@@ -19,15 +20,17 @@ var dan_games = 0;
 var ivan_games = 0;
 var rus_games = 0;
 
-function Player() { 
+function Player() {
     this.name='';
-    this.total_games = 0;
-    this.total_wins = 0;
-    this.total_looses = 0;
-    this.forward_wins = 0;
-    this.forward_looses = 0;
-    this.defence_wins = 0;
-    this.defence_looses = 0;
+    this.totalGames = 0;
+    this.totalWins = 0;
+    this.forwardWins = 0;
+    this.forwardLooses = 0;
+    this.defenceWins = 0;
+    this.defenceLooses = 0;
+    this.frequentTeammate = '';
+    this.mostWinsWith = '';
+    this.mostLoosesWith='';
 }
 //// ARRAY OF PLAYERS
 var playersArray = new Array();
@@ -124,10 +127,12 @@ function getPlayerByName(nameVar){
     for (var ii = 0; ii < playersArray.length; ii++){
         if (playersArray[ii].name.localeCompare(nameVar) == 0) 
             return playersArray[ii];
-        else
-            return null;
     }
+    alert("SUPER EXCEPTION. Something went wrong and will never be the same... ");
+    return null;
 }
+            
+    
 
 function parseJson(){
     if (isDebug) console.log("jsonData is " + jsonData);
@@ -139,9 +144,10 @@ function parseJson(){
         team2_pl1 = obj.team2_player1;
         team2_pl2 = obj.team2_player2;
 
-        scoresArray = obj.scores;
+        scoresArray = $.parseJSON(obj.scores);
+        //scoresArray = obj.scores;
         
-        if (isDebug) console.log("scoresArray is " + scoresArray);
+        if (isDebug) console.log("scoresArray is " + scoresArray + ". Non object:  " + obj.scores);
         
         for (i = 1; i < 3; i++){
             for (j = 1; j < 3; j++){
@@ -153,30 +159,42 @@ function parseJson(){
                     player = new Player();
                     player.name = playerName;
                     playersArray.push(player);
-                    console.log('=====added player with name '+ playerName + " playersArray size: "+playersArray.length);
+                    if (isInfo) console.log('=====added player with name '+ playerName + " playersArray size: "+playersArray.length);
                 }
             }
         };
         
         //for (z = 0; z < scoresArray.length; z++){
-       /* scoresArray.forEach( function (scoresItem){
-            
+        //scoresArray.forEach( function (scoresItem){
+        
+        for (var c in scoresArray) {    
             //calc wins and looses in Forward and Defence
-            console.log("scoresItem is " + scoresItem);
             
-            if (scoresItem.score1 > sscoresItem.score2){
-                getPlayerByName(scoresItem.forward1).forward_wins += 1;
-                getPlayerByName(scoresItem.defender1).defence_wins += 1;
+            if (isDebug) console.log("--------- c is " + " c \  defender1 " + getPlayerByName(scoresArray[c].defender1));
+            
+            if (Number(scoresArray[c].score1) > Number(scoresArray[c].score2)){
+                if (isDebug) console.log(scoresArray[c].score1 + " > " + scoresArray[c].score2);
+                getPlayerByName(scoresArray[c].forward1).forwardWins += 1;
+                getPlayerByName(scoresArray[c].defender1).defenceWins += 1;
+                
+                getPlayerByName(scoresArray[c].forward2).forwardLooses += 1;
+                getPlayerByName(scoresArray[c].defender2).defenceLooses += 1;
+                
             } else{
-                getPlayerByName(scoresItem.forward2).forward_wins += 1;
-                getPlayerByName(scoresItem.defender2).defence_wins += 1;
+                if (isDebug) console.log(scoresArray[c].score1 + " < " + scoresArray[c].score2);
+                getPlayerByName(scoresArray[c].forward2).forwardWins += 1;
+                getPlayerByName(scoresArray[c].defender2).defenceWins += 1;
+                
+                getPlayerByName(scoresArray[c].forward1).forwardLooses += 1;
+                getPlayerByName(scoresArray[c].defender1).defenceLooses += 1;
             }
             
             
-        });*/
+        };
+        
         
         team1 =  obj.team1_player1+" - "+obj.team1_player2;
-        team2 =  obj.team2_player1+" - "+obj.team2_player1;
+        team2 =  obj.team2_player1+" - "+obj.team2_player2;
         score1 = obj.Счет1;
         score2 = obj.Счет2;
         
@@ -188,7 +206,7 @@ function parseJson(){
             
             /*** Calc games  ***/
             if(~team1.indexOf(name) || ~team2.indexOf(name)) {
-                playersArray.find(x => x.name === name).total_games += Number(obj.Счет1) + Number(obj.Счет2);
+                playersArray.find(x => x.name === name).totalGames += Number(obj.Счет1) + Number(obj.Счет2);
                 
                 //@Deprecated
                 window[players[name][0]] += Number(obj.Счет1) + Number(obj.Счет2);
@@ -197,12 +215,12 @@ function parseJson(){
             /*** calc wins ***/
             
             if (~team1.indexOf(name)){
-                playersArray.find(x => x.name === name).total_wins += Number(score1);
+                playersArray.find(x => x.name === name).totalWins += Number(score1);
                 
                 //@Deprecated
                 window[players[name][1]] += Number(score1);
             } else if (~team2.indexOf(name)){
-                playersArray.find(x => x.name === name).total_wins += Number(score2);
+                playersArray.find(x => x.name === name).totalWins += Number(score2);
                 
                 //@Deprecated
                 window[players[name][1]] += Number(score2);
@@ -218,23 +236,35 @@ function parseJson(){
 }
 
 function deepStats(){
-
+    
 }; 
 
-function deepStatsClickListener(name){
+function deepStatsClickListener(player){
 
-    $('#DeepStats #name').text(name.toString());
-    $('#DeepStats').show();
+    $('#DeepStats #name').text(player.name.toString());
+    $('#DeepStats #totalWins').text(player.totalWins);
+    $('#DeepStats #totalLooses').text(Number(player.totalGames) - Number(player.totalWins));
+    
+    $('#DeepStats #persentWins').text(Math.round(Number(player.totalWins)/Number(player.totalGames)*100).toFixed(0)+"%");
+    $('#DeepStats #persentLooses').text(100 - Number($('#DeepStats #persentWins').text().slice(0, -1))+"%");
+    
+    $('#DeepStats #forwardWins').text(player.forwardWins);
+    $('#DeepStats #forwardLooses').text(player.forwardLooses);
+    $('#DeepStats #defenceLooses').text(player.defenceLooses);
+    $('#DeepStats #defenceWins').text(player.defenceWins);
     
     
+    $('#cover').fadeIn();
+    $('#DeepStats').fadeIn();
     
 }; 
 
 
 $('#DeepStats #close-button').click(function(){
-    $('#DeepStats').hide();
+    $('#DeepStats').fadeOut();
+    $('#cover').fadeOut();
 });
 
 $('#shashlyk_stats .player .name').click(function(){
-    deepStatsClickListener($(this).text());
+    deepStatsClickListener(getPlayerByName($(this).text()));
 });
